@@ -1,0 +1,60 @@
+{
+  "version": "1.0.0",
+  "description": "Architecture Decision Records — logged by Chief Agent",
+  "decisions": [
+    {
+      "id": "ADR-001",
+      "date": "2026-07-24",
+      "title": "Replace Apify with Reddit OAuth API",
+      "status": "DEFERRED",
+      "context": "Apify free tier ($5/account) runs out in ~3 days with 18 posts/day. Reddit .json endpoint is dead (403). PullPush.io data is frozen.",
+      "decision": "Keep Apify for now with multi-key fallback (3 accounts = $30 = ~81 days). Reddit OAuth API researched and verified working (free, 60 req/min). Migration planned for future.",
+      "consequences": "Must create new Apify accounts every ~3 months. Reddit OAuth API ready when needed."
+    },
+    {
+      "id": "ADR-002",
+      "date": "2026-07-24",
+      "title": "Post/Save ordering — Supabase first, then Buffer",
+      "status": "IMPLEMENTED",
+      "context": "Original code posted to Buffer first, then saved to Supabase. If Supabase save failed, the tweet was live on X but untracked — causing duplicate posts on next run.",
+      "decision": "Reverse ordering: Save to Supabase (status: 'posting') first, then post to Buffer, then update status to 'published'/'failed'.",
+      "consequences": "Eliminates orphaned posts. Status 'posting' posts that fail Buffer can be detected and retried."
+    },
+    {
+      "id": "ADR-003",
+      "date": "2026-07-24",
+      "title": "Multi-key fallback for all external APIs",
+      "status": "IMPLEMENTED",
+      "context": "Single API keys are single points of failure. Apify quota exhaustion, MiMo rate limits, or Buffer 429s would halt the pipeline.",
+      "decision": "Implement KeyManager class with auto-rotation on 429/quota errors. Apply to both Apify and MiMo. Up to 3 keys per API.",
+      "consequences": "Requires managing multiple accounts. Key status tracked and reported in Slack."
+    },
+    {
+      "id": "ADR-004",
+      "date": "2026-07-24",
+      "title": "Slack notifications for every pipeline run",
+      "status": "IMPLEMENTED",
+      "context": "Pipeline failures were silent — only visible in GitHub Actions logs. No way to know if posts were going out without manually checking.",
+      "decision": "Add Slack Block Kit notifications after every run: success (with tweet, image, subreddit, upvotes), failure (with error details), no-posts (with subreddits scanned).",
+      "consequences": "Requires Slack workspace + bot token. Adds ~2s per pipeline run."
+    },
+    {
+      "id": "ADR-005",
+      "date": "2026-07-24",
+      "title": "Image required for all posts",
+      "status": "IMPLEMENTED",
+      "context": "Text-only posts on X get significantly lower engagement. User confirmed image is required, not optional.",
+      "decision": "Filter scraped posts to only those with image URLs. Posts without images are skipped even if they have the highest upvotes.",
+      "consequences": "Some high-upvote text posts are missed. Reduces total qualifying posts per scrape."
+    },
+    {
+      "id": "ADR-006",
+      "date": "2026-07-24",
+      "title": "MiMo prompt includes current date and latest model names",
+      "status": "IMPLEMENTED",
+      "context": "MiMo generated outdated model references (GPT-4o instead of GPT-5.6 Sol) because its training data has a cutoff date.",
+      "decision": "Inject current date and latest model names (GPT-5.6 Sol, Claude Opus 5, Gemini 3.6 Flash, Llama 4, Mistral Large 3) into every MiMo prompt.",
+      "consequences": "Must update model names periodically as new versions release. MiMo output quality improved significantly."
+    }
+  ]
+}
